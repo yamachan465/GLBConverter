@@ -1,5 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <title>Images → GLB (Plane) → Zip</title>
 <style>
   body { margin: 0; font-family: system-ui, sans-serif; background: #0b1224; color: #e5e7eb; }
@@ -27,9 +28,25 @@
 </div>
 
 <script type="module">
-import {Document, NodeIO} from "https://cdn.jsdelivr.net/npm/@gltf-transform/core@4.2.1/dist/core.modern.js";
-import {KHRMaterialsUnlit} from "https://cdn.jsdelivr.net/npm/@gltf-transform/extensions@4.2.1/dist/extensions.modern.js";
-import {zipSync} from "https://cdn.jsdelivr.net/npm/fflate@0.8.1/esm/browser.js";
+const loadModule = async (urls) => {
+  for (const url of urls) {
+    try { return await import(url); } catch (e) { console.warn("load fail", url, e?.message); }
+  }
+  throw new Error("必要なライブラリを読み込めませんでした（ネットワーク接続を確認してください）");
+};
+
+const {Document, NodeIO} = await loadModule([
+  "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
+  "https://esm.sh/@gltf-transform/core?bundle"
+]);
+const {KHRMaterialsUnlit} = await loadModule([
+  "https://esm.sh/@gltf-transform/extensions@4.2.1?bundle",
+  "https://esm.sh/@gltf-transform/extensions?bundle"
+]);
+const {zipSync} = await loadModule([
+  "https://esm.sh/fflate@0.8.1?bundle",
+  "https://esm.sh/fflate?bundle"
+]);
 
 const drop = document.getElementById("drop");
 const fileInput = document.getElementById("file");
