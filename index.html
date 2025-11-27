@@ -121,6 +121,7 @@ async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
   const h = width >= height ? longSide / aspect : longSide;
 
   const doc = new Document();
+  const buffer = doc.createBuffer(); // 必要なバッファを明示的に作成
   const io = new WebIO().registerExtensions([KHRMaterialsUnlit]);
   const tex = doc.createTexture(file.name).setImage(imgData).setMimeType(file.type || "image/png");
   const unlit = doc.createExtension(KHRMaterialsUnlit).createUnlit();
@@ -140,9 +141,9 @@ async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
   const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
 
   const prim = doc.createPrimitive()
-    .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(positions))
-    .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(uvs))
-    .setIndices(doc.createAccessor().setArray(indices))
+    .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(positions).setBuffer(buffer))
+    .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(uvs).setBuffer(buffer))
+    .setIndices(doc.createAccessor().setArray(indices).setBuffer(buffer))
     .setMaterial(mat);
 
   const mesh = doc.createMesh().addPrimitive(prim);
