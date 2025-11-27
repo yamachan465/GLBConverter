@@ -147,7 +147,7 @@ async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
     .setMaterial(mat);
 
   const mesh = doc.createMesh().addPrimitive(prim);
-  const node = doc.createNode("plane").setMesh(mesh).setRotation([Math.PI / 2, 0, 0]);
+  const node = doc.createNode("plane").setMesh(mesh); // 回転は付けずXY平面に配置
   doc.createScene().addChild(node);
 
   return io.writeBinary(doc);
