@@ -35,7 +35,7 @@ const loadModule = async (urls) => {
   throw new Error("必要なライブラリを読み込めませんでした（ネットワーク接続を確認してください）");
 };
 
-const {Document, NodeIO} = await loadModule([
+const {Document, WebIO} = await loadModule([
   "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
   "https://esm.sh/@gltf-transform/core?bundle"
 ]);
@@ -121,7 +121,7 @@ async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
   const h = width >= height ? longSide / aspect : longSide;
 
   const doc = new Document();
-  const io = new NodeIO().registerExtensions([KHRMaterialsUnlit]);
+  const io = new WebIO().registerExtensions([KHRMaterialsUnlit]);
   const tex = doc.createTexture(file.name).setImage(imgData).setMimeType(file.type || "image/png");
   const unlit = doc.createExtension(KHRMaterialsUnlit).createUnlit();
   const mat = doc.createMaterial("unlit")
