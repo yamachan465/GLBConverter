@@ -137,7 +137,8 @@ async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
      w / 2,  h / 2, 0,
     -w / 2,  h / 2, 0
   ]);
-  const uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+  // V方向を反転して上下逆転を防止
+  const uvs = new Float32Array([0, 1, 1, 1, 1, 0, 0, 0]);
   const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
 
   const prim = doc.createPrimitive()
