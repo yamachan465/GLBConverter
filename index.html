@@ -340,15 +340,30 @@
     }
 
     // Set up window.MINDAR
-    window.MINDAR = mindARModule.default || mindARModule;
-    console.log('MindAR module structure:', window.MINDAR);
+    const rawModule = mindARModule.default || mindARModule;
+    console.log('MindAR module structure:', rawModule);
+    console.log('Available exports:', Object.keys(rawModule));
 
-    if (!window.MINDAR?.IMAGE?.Compiler) {
-      console.error('⚠️ Compiler not found. Available:', Object.keys(window.MINDAR || {}));
+    // Check if Compiler is directly available or under IMAGE
+    if (rawModule.IMAGE?.Compiler) {
+      window.MINDAR = rawModule;
+      console.log('✅ Using MINDAR.IMAGE.Compiler');
+    } else if (rawModule.Compiler) {
+      // Compiler is directly available, wrap it in IMAGE structure for compatibility
+      window.MINDAR = {
+        IMAGE: {
+          Compiler: rawModule.Compiler,
+          Controller: rawModule.Controller,
+          UI: rawModule.UI
+        }
+      };
+      console.log('✅ Wrapped Compiler in MINDAR.IMAGE structure');
+    } else {
+      console.error('⚠️ Compiler not found. Available:', Object.keys(rawModule));
       throw new Error('MindAR.IMAGE.Compilerが見つかりません');
     }
 
-    console.log('✅ MindAR.IMAGE.Compiler ready');
+    console.log('✅ MindAR.IMAGE.Compiler ready:', window.MINDAR.IMAGE.Compiler);
 
     const {Document, WebIO} = await loadModule([
       "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
