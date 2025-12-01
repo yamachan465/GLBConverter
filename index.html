@@ -319,17 +319,36 @@
       throw new Error("必要なライブラリを読み込めませんでした");
     };
 
-    // Load MindAR as ES module
-    const mindARModule = await loadModule([
-      "https://esm.sh/mind-ar@1.2.5/dist/mindar-image.prod.js",
-      "https://cdn.skypack.dev/mind-ar@1.2.5/dist/mindar-image.prod.js"
-    ]);
+    // Load MindAR compiler - try multiple CDN sources
+    console.log('Loading MindAR compiler...');
+    let mindARModule;
 
-    // Set up window.MINDAR for compatibility
-    if (mindARModule) {
-      window.MINDAR = mindARModule;
-      console.log('✅ MindAR loaded via ES module:', mindARModule);
+    try {
+      // Try unpkg first (provides proper UMD build)
+      mindARModule = await import('https://unpkg.com/mind-ar@1.2.5/dist/mindar-image.prod.js');
+      console.log('✅ MindAR loaded from unpkg');
+    } catch (e1) {
+      console.warn('unpkg failed, trying esm.sh:', e1.message);
+      try {
+        // Try esm.sh with different config
+        mindARModule = await import('https://esm.sh/mind-ar@1.2.5');
+        console.log('✅ MindAR loaded from esm.sh');
+      } catch (e2) {
+        console.error('All MindAR loading attempts failed');
+        throw new Error('MindARコンパイラの読み込みに失敗しました');
+      }
     }
+
+    // Set up window.MINDAR
+    window.MINDAR = mindARModule.default || mindARModule;
+    console.log('MindAR module structure:', window.MINDAR);
+
+    if (!window.MINDAR?.IMAGE?.Compiler) {
+      console.error('⚠️ Compiler not found. Available:', Object.keys(window.MINDAR || {}));
+      throw new Error('MindAR.IMAGE.Compilerが見つかりません');
+    }
+
+    console.log('✅ MindAR.IMAGE.Compiler ready');
 
     const {Document, WebIO} = await loadModule([
       "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
