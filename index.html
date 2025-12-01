@@ -308,9 +308,26 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
+
   <script type="module">
     let csvData = [];  // CSVから読み込んだデータ
     let downloadedFiles = {};  // ダウンロードした画像ファイル
+
+    // Wait for MindAR to load
+    function waitForMindAR() {
+      return new Promise((resolve) => {
+        if (window.MINDAR?.IMAGE?.Compiler) {
+          resolve();
+        } else {
+          const checkInterval = setInterval(() => {
+            if (window.MINDAR?.IMAGE?.Compiler) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+        }
+      });
+    }
 
     // Load required libraries
     const loadModule = async (urls) => {
@@ -319,6 +336,10 @@
       }
       throw new Error("必要なライブラリを読み込めませんでした");
     };
+
+    // Wait for MindAR
+    await waitForMindAR();
+    console.log('✅ MindAR loaded');
 
     const {Document, WebIO} = await loadModule([
       "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
@@ -333,7 +354,7 @@
       "https://esm.sh/fflate?bundle"
     ]);
 
-    console.log('✅ Libraries loaded successfully');
+    console.log('✅ All libraries loaded successfully');
 
     // Google Drive URL conversion
     function convertGoogleDriveUrl(url) {
