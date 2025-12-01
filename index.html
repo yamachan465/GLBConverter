@@ -307,27 +307,9 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
-
   <script type="module">
     let csvData = [];  // CSVから読み込んだデータ
     let downloadedFiles = {};  // ダウンロードした画像ファイル
-
-    // Wait for MindAR to load
-    function waitForMindAR() {
-      return new Promise((resolve) => {
-        if (window.MINDAR?.IMAGE?.Compiler) {
-          resolve();
-        } else {
-          const checkInterval = setInterval(() => {
-            if (window.MINDAR?.IMAGE?.Compiler) {
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 100);
-        }
-      });
-    }
 
     // Load required libraries
     const loadModule = async (urls) => {
@@ -337,9 +319,17 @@
       throw new Error("必要なライブラリを読み込めませんでした");
     };
 
-    // Wait for MindAR
-    await waitForMindAR();
-    console.log('✅ MindAR loaded');
+    // Load MindAR as ES module
+    const mindARModule = await loadModule([
+      "https://esm.sh/mind-ar@1.2.5/dist/mindar-image.prod.js",
+      "https://cdn.skypack.dev/mind-ar@1.2.5/dist/mindar-image.prod.js"
+    ]);
+
+    // Set up window.MINDAR for compatibility
+    if (mindARModule) {
+      window.MINDAR = mindARModule;
+      console.log('✅ MindAR loaded via ES module:', mindARModule);
+    }
 
     const {Document, WebIO} = await loadModule([
       "https://esm.sh/@gltf-transform/core@4.2.1?bundle",
