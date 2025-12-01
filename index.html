@@ -582,52 +582,85 @@
 
     // GLB conversion function (from existing index.html)
     async function imageToGlb(file, {longSide = 1.0, doubleSided = true}) {
-      const imgData = new Uint8Array(await file.arrayBuffer());
-      const {width, height} = await getImageSize(imgData);
-      const aspect = width / height || 1;
-      const w = width >= height ? longSide : longSide * aspect;
-      const h = width >= height ? longSide / aspect : longSide;
+      try {
+        if (!file) {
+          throw new Error('File is null or undefined');
+        }
 
-      const doc = new Document();
-      const buffer = doc.createBuffer();
-      const io = new WebIO().registerExtensions([KHRMaterialsUnlit]);
-      const tex = doc.createTexture(file.name).setImage(imgData).setMimeType(file.type || "image/png");
-      const unlit = doc.createExtension(KHRMaterialsUnlit).createUnlit();
-      const mat = doc.createMaterial("unlit")
-        .setBaseColorTexture(tex)
-        .setAlphaMode("BLEND")
-        .setDoubleSided(doubleSided)
-        .setExtension("KHR_materials_unlit", unlit);
+        console.log('Converting to GLB:', file.name, 'size:', file.size, 'type:', file.type);
 
-      const positions = new Float32Array([
-        -w / 2, -h / 2, 0,
-         w / 2, -h / 2, 0,
-         w / 2,  h / 2, 0,
-        -w / 2,  h / 2, 0
-      ]);
-      const uvs = new Float32Array([0, 1, 1, 1, 1, 0, 0, 0]);
-      const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+        const imgData = new Uint8Array(await file.arrayBuffer());
+        console.log('Image data loaded, size:', imgData.length);
 
-      const prim = doc.createPrimitive()
-        .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(positions).setBuffer(buffer))
-        .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(uvs).setBuffer(buffer))
-        .setIndices(doc.createAccessor().setArray(indices).setBuffer(buffer))
-        .setMaterial(mat);
+        const {width, height} = await getImageSize(imgData);
+        console.log('Image dimensions:', width, 'x', height);
 
-      const mesh = doc.createMesh().addPrimitive(prim);
-      const node = doc.createNode("plane").setMesh(mesh);
-      doc.createScene().addChild(node);
+        const aspect = width / height || 1;
+        const w = width >= height ? longSide : longSide * aspect;
+        const h = width >= height ? longSide / aspect : longSide;
 
-      return io.writeBinary(doc);
+        const doc = new Document();
+        const buffer = doc.createBuffer();
+        const io = new WebIO().registerExtensions([KHRMaterialsUnlit]);
+        const tex = doc.createTexture(file.name).setImage(imgData).setMimeType(file.type || "image/png");
+        const unlit = doc.createExtension(KHRMaterialsUnlit).createUnlit();
+        const mat = doc.createMaterial("unlit")
+          .setBaseColorTexture(tex)
+          .setAlphaMode("BLEND")
+          .setDoubleSided(doubleSided)
+          .setExtension("KHR_materials_unlit", unlit);
+
+        const positions = new Float32Array([
+          -w / 2, -h / 2, 0,
+           w / 2, -h / 2, 0,
+           w / 2,  h / 2, 0,
+          -w / 2,  h / 2, 0
+        ]);
+        const uvs = new Float32Array([0, 1, 1, 1, 1, 0, 0, 0]);
+        const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+
+        const prim = doc.createPrimitive()
+          .setAttribute("POSITION", doc.createAccessor().setType("VEC3").setArray(positions).setBuffer(buffer))
+          .setAttribute("TEXCOORD_0", doc.createAccessor().setType("VEC2").setArray(uvs).setBuffer(buffer))
+          .setIndices(doc.createAccessor().setArray(indices).setBuffer(buffer))
+          .setMaterial(mat);
+
+        const mesh = doc.createMesh().addPrimitive(prim);
+        const node = doc.createNode("plane").setMesh(mesh);
+        doc.createScene().addChild(node);
+
+        const glbBuffer = await io.writeBinary(doc);
+        console.log('GLB created, size:', glbBuffer.byteLength);
+
+        return glbBuffer;
+      } catch (error) {
+        console.error('GLB conversion error:', error);
+        throw new Error(`GLB変換エラー (${file?.name || 'unknown'}): ${error.message || error}`);
+      }
     }
 
     function getImageSize(uint8) {
       return new Promise((resolve, reject) => {
-        const blob = new Blob([uint8]);
-        const img = new Image();
-        img.onload = () => resolve({width: img.naturalWidth, height: img.naturalHeight});
-        img.onerror = reject;
-        img.src = URL.createObjectURL(blob);
+        try {
+          const blob = new Blob([uint8]);
+          const img = new Image();
+
+          img.onload = () => {
+            console.log('Image size detected:', img.naturalWidth, 'x', img.naturalHeight);
+            URL.revokeObjectURL(img.src);
+            resolve({width: img.naturalWidth, height: img.naturalHeight});
+          };
+
+          img.onerror = (e) => {
+            console.error('Image size detection error:', e);
+            URL.revokeObjectURL(img.src);
+            reject(new Error('画像サイズの取得に失敗しました'));
+          };
+
+          img.src = URL.createObjectURL(blob);
+        } catch (error) {
+          reject(new Error(`getImageSize error: ${error.message}`));
+        }
       });
     }
 
