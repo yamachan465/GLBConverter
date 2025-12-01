@@ -649,10 +649,26 @@
 
     function loadImageElement(file) {
       return new Promise((resolve, reject) => {
+        if (!file) {
+          reject(new Error('File is null or undefined'));
+          return;
+        }
+
         const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+          console.log('Image loaded successfully:', file.name);
+          resolve(img);
+        };
+        img.onerror = (e) => {
+          console.error('Image load error:', file.name, e);
+          reject(new Error(`Failed to load image: ${file.name}`));
+        };
+
+        try {
+          img.src = URL.createObjectURL(file);
+        } catch (error) {
+          reject(new Error(`Failed to create object URL: ${error.message}`));
+        }
       });
     }
 
@@ -707,49 +723,79 @@
 
           addLog(`\n[${i + 1}/${csvData.length}] ${row.activityName} を処理中...`);
 
-          // Get files from downloadedFiles
-          const image1 = downloadedFiles[`${i}_image1`];
-          const image2 = downloadedFiles[`${i}_image2`];
-          const image3 = downloadedFiles[`${i}_image3`];
-          const marker1 = downloadedFiles[`${i}_marker1`];
-          const marker2 = downloadedFiles[`${i}_marker2`];
-          const marker3 = downloadedFiles[`${i}_marker3`];
+          try {
+            // Get files from downloadedFiles
+            const image1 = downloadedFiles[`${i}_image1`];
+            const image2 = downloadedFiles[`${i}_image2`];
+            const image3 = downloadedFiles[`${i}_image3`];
+            const marker1 = downloadedFiles[`${i}_marker1`];
+            const marker2 = downloadedFiles[`${i}_marker2`];
+            const marker3 = downloadedFiles[`${i}_marker3`];
 
-          if (!image1 || !image2 || !image3 || !marker1 || !marker2 || !marker3) {
-            addLog(`  ⚠️ スキップ: 画像ファイルが不足しています`);
-            completedSteps += 4;
-            progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
-            continue;
-          }
+            // Check which files are missing
+            const missingFiles = [];
+            if (!image1) missingFiles.push('image1');
+            if (!image2) missingFiles.push('image2');
+            if (!image3) missingFiles.push('image3');
+            if (!marker1) missingFiles.push('marker1');
+            if (!marker2) missingFiles.push('marker2');
+            if (!marker3) missingFiles.push('marker3');
 
-          // Convert images to GLB
-          for (let j = 1; j <= 3; j++) {
-            const imageFile = downloadedFiles[`${i}_image${j}`];
-            addLog(`  → 画像${j} をGLB変換中...`);
-            const glbBuffer = await imageToGlb(imageFile, { longSide: 1.0, doubleSided: true });
-            zipEntries[`${folderName}/image${j}.glb`] = new Uint8Array(glbBuffer);
+            if (missingFiles.length > 0) {
+              addLog(`  ⚠️ スキップ: 不足ファイル: ${missingFiles.join(', ')}`);
+              completedSteps += 4;
+              progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
+              continue;
+            }
+
+            // Convert images to GLB
+            for (let j = 1; j <= 3; j++) {
+              const imageFile = downloadedFiles[`${i}_image${j}`];
+              addLog(`  → 画像${j} をGLB変換中...`);
+              try {
+                const glbBuffer = await imageToGlb(imageFile, { longSide: 1.0, doubleSided: true });
+                zipEntries[`${folderName}/image${j}.glb`] = new Uint8Array(glbBuffer);
+                addLog(`    ✓ GLB変換完了`);
+              } catch (glbError) {
+                addLog(`    ✗ GLB変換エラー: ${glbError.message}`);
+                throw glbError;
+              }
+              completedSteps++;
+              progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
+            }
+
+            // Generate .mind file
+            addLog(`  → .mindファイルを生成中...`);
+            try {
+              const markerFiles = [marker1, marker2, marker3];
+              const mindData = await generateMindFile(markerFiles);
+              zipEntries[`${folderName}/${folderName}.mind`] = new Uint8Array(mindData);
+              addLog(`    ✓ .mind生成完了`);
+            } catch (mindError) {
+              addLog(`    ✗ .mind生成エラー: ${mindError.message}`);
+              throw mindError;
+            }
+
+            // Create targets JSON
+            const targets = [
+              { id: 0, name: 'marker1', marker: `./${folderName}.mind`, model: './image1.glb' },
+              { id: 1, name: 'marker2', marker: `./${folderName}.mind`, model: './image2.glb' },
+              { id: 2, name: 'marker3', marker: `./${folderName}.mind`, model: './image3.glb' }
+            ];
+            const targetsJson = JSON.stringify(targets, null, 2);
+            zipEntries[`${folderName}/targets-${folderName}.json`] = new TextEncoder().encode(targetsJson);
+
             completedSteps++;
             progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
+            addLog(`  ✅ ${row.activityName} 完了`);
+
+          } catch (rowError) {
+            addLog(`  ❌ ${row.activityName} 処理失敗: ${rowError.message}`);
+            console.error(`Row ${i} error:`, rowError);
+            // Continue to next row even if this one failed
+            completedSteps += 4;
+            progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
           }
-
-          // Generate .mind file
-          addLog(`  → .mindファイルを生成中...`);
-          const markerFiles = [marker1, marker2, marker3];
-          const mindData = await generateMindFile(markerFiles);
-          zipEntries[`${folderName}/${folderName}.mind`] = new Uint8Array(mindData);
-
-          // Create targets JSON
-          const targets = [
-            { id: 0, name: 'marker1', marker: `./${folderName}.mind`, model: './image1.glb' },
-            { id: 1, name: 'marker2', marker: `./${folderName}.mind`, model: './image2.glb' },
-            { id: 2, name: 'marker3', marker: `./${folderName}.mind`, model: './image3.glb' }
-          ];
-          const targetsJson = JSON.stringify(targets, null, 2);
-          zipEntries[`${folderName}/targets-${folderName}.json`] = new TextEncoder().encode(targetsJson);
-
-          completedSteps++;
-          progressBar.style.width = `${(completedSteps / totalSteps) * 100}%`;
-          addLog(`  ✅ ${row.activityName} 完了`);
         }
 
         // Create ZIP
