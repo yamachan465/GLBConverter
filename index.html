@@ -429,17 +429,56 @@
           blob = await response.blob();
         }
 
-        // Detect file extension from blob type or URL
-        let extension = 'png';
-        if (blob.type.includes('jpeg') || blob.type.includes('jpg')) {
-          extension = 'jpg';
-        } else if (blob.type.includes('png')) {
-          extension = 'png';
-        } else if (blob.type.includes('webp')) {
-          extension = 'webp';
+        // Validate blob
+        if (!blob || blob.size === 0) {
+          throw new Error('Downloaded file is empty');
         }
 
-        const file = new File([blob], `${filename}.${extension}`, { type: blob.type });
+        console.log('Downloaded blob:', blob.type, blob.size, 'bytes');
+
+        // Validate that it's actually an image
+        if (!blob.type.startsWith('image/') && !blob.type.includes('octet-stream')) {
+          console.warn('Blob type is not image:', blob.type);
+          // Try to determine type from content
+        }
+
+        // Detect file extension from blob type or URL
+        let extension = 'png';
+        let mimeType = blob.type;
+
+        if (blob.type.includes('jpeg') || blob.type.includes('jpg')) {
+          extension = 'jpg';
+          mimeType = 'image/jpeg';
+        } else if (blob.type.includes('png')) {
+          extension = 'png';
+          mimeType = 'image/png';
+        } else if (blob.type.includes('webp')) {
+          extension = 'webp';
+          mimeType = 'image/webp';
+        } else if (blob.type === '' || blob.type === 'application/octet-stream') {
+          // Try to detect from URL
+          if (url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg')) {
+            extension = 'jpg';
+            mimeType = 'image/jpeg';
+          } else if (url.toLowerCase().includes('.png')) {
+            extension = 'png';
+            mimeType = 'image/png';
+          } else {
+            // Default to png
+            extension = 'png';
+            mimeType = 'image/png';
+          }
+        }
+
+        // Create new blob with correct mime type if needed
+        if (!blob.type.startsWith('image/')) {
+          blob = new Blob([blob], { type: mimeType });
+          console.log('Corrected blob type to:', mimeType);
+        }
+
+        const file = new File([blob], `${filename}.${extension}`, { type: mimeType });
+        console.log('Created file:', file.name, file.size, 'bytes', file.type);
+
         return file;
       } catch (error) {
         console.error(`Failed to fetch ${url}:`, error);
