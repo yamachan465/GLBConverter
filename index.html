@@ -732,12 +732,21 @@
         images.push(img);
       }
 
+      console.log('Starting MindAR compilation for', images.length, 'images');
       const compiler = new window.MINDAR.IMAGE.Compiler();
+
+      // Compile the image targets
       const dataList = await compiler.compileImageTargets(images, (progress) => {
-        console.log('Compiler progress:', progress);
+        console.log('Compiler progress:', Math.round(progress * 100) + '%');
       });
 
-      return dataList;
+      console.log('Compilation complete, dataList:', dataList);
+
+      // Export the compiled data as binary
+      const exportedBuffer = await compiler.exportData();
+      console.log('Exported .mind file size:', exportedBuffer.byteLength, 'bytes');
+
+      return exportedBuffer;
     }
 
     function loadImageElement(file) {
