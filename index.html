@@ -725,26 +725,34 @@
     }
 
     // MindAR .mind generation
-    async function generateMindFile(markerFiles) {
+    async function generateMindFile(markerFiles, personId = 'unknown') {
       const images = [];
-      for (const file of markerFiles) {
+
+      console.log(`[${personId}] Starting .mind generation for ${markerFiles.length} markers`);
+
+      for (let i = 0; i < markerFiles.length; i++) {
+        const file = markerFiles[i];
+        console.log(`[${personId}] Loading marker ${i + 1}: ${file.name}`);
         const img = await loadImageElement(file);
+        console.log(`[${personId}] Marker ${i + 1} loaded: ${img.naturalWidth}x${img.naturalHeight}px`);
         images.push(img);
       }
 
-      console.log('Starting MindAR compilation for', images.length, 'images');
+      console.log(`[${personId}] Creating new MindAR compiler instance`);
       const compiler = new window.MINDAR.IMAGE.Compiler();
 
       // Compile the image targets
+      console.log(`[${personId}] Starting compilation...`);
       const dataList = await compiler.compileImageTargets(images, (progress) => {
-        console.log('Compiler progress:', Math.round(progress * 100) + '%');
+        console.log(`[${personId}] Compiler progress: ${Math.round(progress * 100)}%`);
       });
 
-      console.log('Compilation complete, dataList:', dataList);
+      console.log(`[${personId}] Compilation complete, dataList:`, dataList);
 
       // Export the compiled data as binary
+      console.log(`[${personId}] Exporting data...`);
       const exportedBuffer = await compiler.exportData();
-      console.log('Exported .mind file size:', exportedBuffer.byteLength, 'bytes');
+      console.log(`[${personId}] ✅ Exported .mind file size: ${exportedBuffer.byteLength} bytes (${Math.round(exportedBuffer.byteLength / 1024)}KB)`);
 
       return exportedBuffer;
     }
@@ -757,8 +765,10 @@
         }
 
         const img = new Image();
+        img.crossOrigin = 'anonymous'; // Ensure CORS compatibility
+
         img.onload = () => {
-          console.log('Image loaded successfully:', file.name);
+          console.log('Image loaded successfully:', file.name, `(${img.naturalWidth}x${img.naturalHeight})`);
           resolve(img);
         };
         img.onerror = (e) => {
@@ -874,15 +884,17 @@
             addLog(`  → .mindファイルを生成中...`);
             try {
               const markerFiles = [marker1, marker2, marker3];
-              const mindData = await generateMindFile(markerFiles);
+              const mindData = await generateMindFile(markerFiles, sequenceNumber);
+              const mindSize = Math.round(mindData.byteLength / 1024);
               zipEntries[`${folderName}/${folderName}.mind`] = new Uint8Array(mindData);
-              addLog(`    ✓ .mind生成完了`);
+              addLog(`    ✓ .mind生成完了 (${mindSize}KB)`);
             } catch (mindError) {
               addLog(`    ✗ .mind生成エラー: ${mindError.message}`);
               throw mindError;
             }
 
             // Create targets JSON
+            // Each .mind file is independent, so IDs always start from 0
             const targets = [
               { id: 0, name: 'marker1', marker: `./${folderName}.mind`, model: './image1.glb' },
               { id: 1, name: 'marker2', marker: `./${folderName}.mind`, model: './image2.glb' },
