@@ -13,6 +13,9 @@
     "archiver": "^6.0.1",
     "cors": "^2.8.5",
     "@gltf-transform/core": "^4.2.1",
-    "@gltf-transform/extensions": "^4.2.1"
+    "@gltf-transform/extensions": "^4.2.1",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "validator": "^13.11.0"
   }
 }
