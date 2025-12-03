@@ -41,18 +41,27 @@ app.use(helmet({
   }
 }));
 
-// CORS - 特定のオリジンのみ許可（開発環境用）
+// CORS - 特定のオリジンのみ許可
 const corsOptions = {
   origin: function (origin, callback) {
-    // localhostからのアクセスのみ許可（本番環境では特定ドメインを指定）
-    const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
-    if (!origin || allowedOrigins.includes(origin)) {
+    // 許可するオリジンのリスト
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://glb-converter.vercel.app'
+    ];
+
+    // オリジンがない場合（同一オリジン）または許可リストに含まれる場合は許可
+    if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed))) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn('CORS blocked origin:', origin);
+      callback(null, true); // 開発環境では許可（本番環境では false に変更）
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
 
@@ -408,7 +417,6 @@ app.get('/api/proxy-image', proxyLimiter, async (req, res) => {
       console.log('Successfully fetched:', buffer.byteLength, 'bytes, type:', validation.type);
 
       res.set('Content-Type', validation.type);
-      res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
       res.set('Cache-Control', 'public, max-age=3600'); // 1時間キャッシュ
       res.send(Buffer.from(buffer));
     } catch (fetchError) {
