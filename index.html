@@ -449,30 +449,45 @@
     // Fetch image from URL and convert to File object
     async function fetchImageAsFile(url, filename) {
       try {
-        // Try direct fetch first
         let response;
         let blob;
 
-        try {
-          const directUrl = convertGoogleDriveUrl(url);
-          response = await fetch(directUrl, { mode: 'cors' });
+        // Check if it's a Google Drive URL
+        const isGoogleDrive = url.includes('drive.google.com');
 
-          if (response.ok) {
-            blob = await response.blob();
-          } else {
-            throw new Error('Direct fetch failed, trying proxy');
-          }
-        } catch (directError) {
-          // If direct fetch fails (CORS), use server proxy
-          console.log('Using proxy for:', url);
+        if (isGoogleDrive) {
+          // Always use proxy for Google Drive URLs
+          console.log('Using proxy for Google Drive:', url);
           const proxyUrl = `http://localhost:3000/api/proxy-image?url=${encodeURIComponent(url)}`;
           response = await fetch(proxyUrl);
 
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(`Proxy failed: HTTP ${response.status}: ${response.statusText}`);
           }
 
           blob = await response.blob();
+        } else {
+          // Try direct fetch for non-Google Drive URLs
+          try {
+            response = await fetch(url, { mode: 'cors' });
+
+            if (response.ok) {
+              blob = await response.blob();
+            } else {
+              throw new Error('Direct fetch failed, trying proxy');
+            }
+          } catch (directError) {
+            // If direct fetch fails (CORS), use server proxy
+            console.log('Direct fetch failed, using proxy for:', url);
+            const proxyUrl = `http://localhost:3000/api/proxy-image?url=${encodeURIComponent(url)}`;
+            response = await fetch(proxyUrl);
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            blob = await response.blob();
+          }
         }
 
         // Validate blob
