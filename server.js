@@ -75,10 +75,10 @@ const generalLimiter = rateLimit({
 });
 app.use(generalLimiter);
 
-// レート制限 - プロキシエンドポイント（特に厳しく）
+// レート制限 - プロキシエンドポイント（画像ダウンロード用に緩和）
 const proxyLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1分
-  max: 10, // 最大10リクエスト
+  max: 200, // 最大200リクエスト（30人×6画像=180枚に対応）
   message: 'Too many proxy requests, please slow down.'
 });
 
